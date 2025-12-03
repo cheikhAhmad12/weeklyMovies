@@ -46,3 +46,46 @@ def film_reviews(driver, film_url:str) -> pd.DataFrame:
         hash_c = hashlib.sha1(((auteur or "") + "||" + texte).encode()).hexdigest()
         rows.append({"auteur": auteur, "note": note, "texte": texte, "url": film_url, "hash_critique": hash_c})
     return pd.DataFrame(rows)
+
+def fake_scrape_reviews() -> list[dict]:
+    """
+    Simule le résultat d'un scraping SensCritique.
+    Retourne une liste de critiques factices au format attendu par le flow.
+    """
+    critiques = []
+
+    # Critique 1
+    texte1 = "Film très touchant, avec une réalisation solide et des acteurs convaincants."
+    url1 = "https://www.senscritique.com/film/film_test_1/critique/1"
+    critiques.append({
+        "titre": "Film test 1",
+        "film_url": "https://www.senscritique.com/film/film_test_1",
+        "auteur": "UserA",
+        "note": 8.0,
+        "texte": texte1,
+        "url": url1,
+    })
+
+    # Critique 2
+    texte2 = "Comédie correcte, quelques bonnes blagues mais un scénario assez prévisible."
+    url2 = "https://www.senscritique.com/film/film_test_2/critique/2"
+    critiques.append({
+        "titre": "Film test 2",
+        "film_url": "https://www.senscritique.com/film/film_test_2",
+        "auteur": "UserB",
+        "note": 6.5,
+        "texte": texte2,
+        "url": url2,
+    })
+
+    texte3 = "Horreur movie, J ai vraiment eu tres peur."
+    url3 = "https://www.senscritique.com/film/film_test_3/critique/3"
+    critiques.append({
+        "titre": "Film test 3",
+        "film_url": "https://www.senscritique.com/film/film_test_3",
+        "auteur": "UserB",
+        "note": 6.5,
+        "texte": texte3,
+        "url": url3,
+    })
+    return critiques

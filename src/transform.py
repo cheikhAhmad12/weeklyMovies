@@ -17,3 +17,20 @@ def summarize_and_tag(text: str, tgi_url: str):
     m = re.search(r"\{.*\}", raw, re.S)
     js = json.loads(m.group(0)) if m else {"resume":"", "sentiment":"neutre", "themes":[]}
     return js
+
+def embed_texts(texts:list[str], tei_url:str) -> list[list[float]]:
+    r = requests.post(f"{tei_url}/embed", json={"inputs": texts, "truncate": True})
+    r.raise_for_status()
+    data = r.json()
+    # TEI peut renvoyer {"embeddings":[...]} ou liste directe selon version
+    return data["embeddings"] if isinstance(data, dict) else data
+
+def enrich_with_llm_and_embedding(texte: str, tgi_url: str | None = None, tei_url: str | None = None):
+    """
+    Combine appel TGI (résumé/sentiment/thèmes) et embedding TEI sur un texte.
+    """
+    tgi = tgi_url or "http://tgi:80"
+    tei = tei_url or "http://tei:80"
+    enriched = summarize_and_tag(texte, tgi)
+    emb = embed_texts([texte], tei)[0]
+    return enriched, emb

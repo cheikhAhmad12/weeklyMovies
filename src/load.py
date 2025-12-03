@@ -1,8 +1,19 @@
+import os
 import psycopg
 from psycopg.rows import dict_row
 
-def get_conn(dsn:str):
+
+def get_conn(dsn: str | None = None):
+    """
+    Ouvre une connexion PostgreSQL avec autocommit.
+    Si dsn est None, lit DATABASE_URL ou utilise un DSN par défaut.
+    """
+    if dsn is None:
+        dsn = os.getenv("DATABASE_URL") or "dbname=movies user=etl password=etl host=postgres port=5432"
+    if dsn.startswith("postgresql+"):
+        dsn = dsn.replace("postgresql+psycopg://", "postgresql://", 1)
     return psycopg.connect(dsn, autocommit=True)
+
 
 def upsert_film(conn, film):
     with conn.cursor(row_factory=dict_row) as cur:
@@ -13,6 +24,7 @@ def upsert_film(conn, film):
             RETURNING id
         """, film)
         return cur.fetchone()["id"]
+
 
 def insert_review(conn, film_title, row, enriched, emb):
     sentiment = (enriched.get("sentiment") or "").lower()
