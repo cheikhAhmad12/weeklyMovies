@@ -1,3 +1,5 @@
 # Ignore local Postgres volume data
 pg_data/
 .env
+__pycache__/
+*.pyc
