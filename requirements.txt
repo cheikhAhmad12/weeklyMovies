@@ -1,0 +1,9 @@
+beautifulsoup4==4.12.3
+selenium==4.24.0
+webdriver-manager==4.0.2
+requests==2.32.3
+pydantic==2.8.2
+pandas==2.2.2
+psycopg[binary,pool]==3.2.1
+prefect==3.0.0
+python-dotenv==1.0.1

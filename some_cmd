@@ -1,0 +1,6 @@
+docker compose down
+docker compose pull tgi
+docker compose up -d tgi
+docker inspect weeklymovies-tgi-1 | grep -A2 '"Cmd"'
+docker compose logs -f tgi
+docker compose exec postgres psql -U etl -d movies

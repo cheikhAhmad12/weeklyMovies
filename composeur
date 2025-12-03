@@ -1,0 +1,92 @@
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: movies
+      POSTGRES_USER: etl
+      POSTGRES_PASSWORD: etl
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U etl -d movies"]
+      interval: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "8081:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+    environment:
+      MODEL_ID: sentence-transformers/all-MiniLM-L6-v2
+    ports:
+      - "8080:80"   # TEI API accessible sur localhost:8080
+    restart: unless-stopped
+
+
+  tgi:
+    image: ghcr.io/huggingface/text-generation-inference:latest-intel-cpu
+    env_file: .env
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN}
+      HF_HUB_ENABLE_HF_TRANSFER: "1"
+      HF_HOME: /data
+      HUGGINGFACE_HUB_CACHE: /data
+      OMP_NUM_THREADS: "4"
+      TOKENIZERS_PARALLELISM: "false"
+      # hard-disable Triton / Mamba GPU bits on CPU
+      MAMBA_USE_TRITON: "0"
+      TORCHINDUCTOR_USE_TRITON: "0"
+      XFORMERS_FORCE_DISABLE_TRITON: "1"
+      USE_TRITON: "0"
+    command: ["--model-id", "${TGI_MODEL}", "--disable-custom-kernels"]
+    ports:
+      - "${TGI_PORT}:80"
+    volumes:
+      - tgi-cache:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    restart: unless-stopped
+
+
+
+
+  selenium:
+    image: selenium/standalone-chromium:latest
+    ports:
+      - "4444:4444"
+    shm_size: 2gb
+
+  prefect:
+    image: prefecthq/prefect:3-latest
+    ports:
+      - "4200:4200"
+
+  etl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+      - tei
+      - tgi
+    environment:
+      DATABASE_URL: postgresql+psycopg://etl:etl@postgres:5432/movies
+      TEI_URL: http://tei:80
+      TGI_URL: http://tgi:80
+    volumes:
+      - .:/app
+
+      
+volumes:
+  tgi-cache:
+  pgdata:
