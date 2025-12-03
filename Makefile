@@ -19,9 +19,7 @@ bash:
 	docker compose run --rm etl bash
 
 migrate:
-	docker compose exec postgres sh -lc '$(psql) -f /app/sql/000_init_extensions.sql'
-	docker compose exec postgres sh -lc '$(psql) -f /app/sql/010_dim_tables.sql'
-	docker compose exec postgres sh -lc '$(psql) -f /app/sql/020_fact_tables.sql'
+	docker compose exec postgres sh -lc '$(psql) -f /app/sql/schema.sql'
 
 db-status:
 	docker compose exec postgres sh -lc '$(psql) -c "\dt"'
@@ -31,7 +29,7 @@ reset:
 	$(MAKE) migrate
 
 seed-dates:
-	docker compose exec postgres sh -lc '$(psql) -f /app/sql/populate_date.sql'
+	@echo "No date seed required for current schema."
 
 # Sanity checks TEI / TGI
 tei-ok:
@@ -41,13 +39,16 @@ tgi-ok:
 	curl -fsS http://localhost:8082/health && echo " TGI OK"
 
 flow:
-	docker compose run --rm etl bash -lc "python -m src.flows.weekly_pipeline"
+	docker compose run --rm etl bash -lc "python -m src.flow"
 
 reset-db:
 	PGPASSWORD=etl psql -h localhost -p 5434 -U etl -d movies <<'SQL'
-	TRUNCATE fact_critique RESTART IDENTITY CASCADE;
-	TRUNCATE dim_film RESTART IDENTITY CASCADE;
-	TRUNCATE dim_source RESTART IDENTITY CASCADE;
+	TRUNCATE reviews RESTART IDENTITY CASCADE;
+	TRUNCATE films RESTART IDENTITY CASCADE;
+	TRUNCATE genres RESTART IDENTITY CASCADE;
+	TRUNCATE producteurs RESTART IDENTITY CASCADE;
+	TRUNCATE realisateurs RESTART IDENTITY CASCADE;
+	TRUNCATE scenaristes RESTART IDENTITY CASCADE;
+	TRUNCATE pays RESTART IDENTITY CASCADE;
 	SQL
-		@echo "📛 Base vidée (hors dim_date)."
-
+		@echo "📛 Base vidée."
