@@ -47,45 +47,88 @@ def film_reviews(driver, film_url:str) -> pd.DataFrame:
         rows.append({"auteur": auteur, "note": note, "texte": texte, "url": film_url, "hash_critique": hash_c})
     return pd.DataFrame(rows)
 
+
 def fake_scrape_reviews() -> list[dict]:
     """
-    Simule le résultat d'un scraping SensCritique.
-    Retourne une liste de critiques factices au format attendu par le flow.
+    Simule le résultat d'un scraping SensCritique, adapté au schéma actuel.
+    Retourne une liste de dicts contenant :
+      - métadonnées film (film_url, rate, date_sortie, image, bande_originale, groupe, annee, duree, genres, producteurs, realisateurs, scenaristes, pays)
+      - champs critique (titre, texte, url, likes, comments, note)
     """
     critiques = []
 
-    # Critique 1
-    texte1 = "Film très touchant, avec une réalisation solide et des acteurs convaincants."
-    url1 = "https://www.senscritique.com/film/film_test_1/critique/1"
+    def make_hash(texte, url):
+        return hashlib.md5(f"{texte}|{url}".encode("utf-8")).hexdigest()
+
     critiques.append({
         "titre": "Film test 1",
         "film_url": "https://www.senscritique.com/film/film_test_1",
         "auteur": "UserA",
         "note": 8.0,
-        "texte": texte1,
-        "url": url1,
+        "texte": "Film très touchant, avec une réalisation solide et des acteurs convaincants.",
+        "url": "https://www.senscritique.com/film/film_test_1/critique/1",
+        "hash_critique": make_hash("Film très touchant, avec une réalisation solide et des acteurs convaincants.", "https://www.senscritique.com/film/film_test_1/critique/1"),
+        "likes": 12,
+        "comments": 3,
+        "rate": 8.2,
+        "date_sortie": "2024-01-10",
+        "image": "https://img.test/film1.jpg",
+        "bande_originale": "Compositeur A",
+        "groupe": None,
+        "annee": 2024,
+        "duree": 110,
+        "genres": ["Drame", "Romance"],
+        "producteurs": ["Prod A", "Prod B"],
+        "realisateurs": ["Réalisateur A"],
+        "scenaristes": ["Scénariste A"],
+        "pays": ["France"],
     })
 
-    # Critique 2
-    texte2 = "Comédie correcte, quelques bonnes blagues mais un scénario assez prévisible."
-    url2 = "https://www.senscritique.com/film/film_test_2/critique/2"
     critiques.append({
         "titre": "Film test 2",
         "film_url": "https://www.senscritique.com/film/film_test_2",
         "auteur": "UserB",
         "note": 6.5,
-        "texte": texte2,
-        "url": url2,
+        "texte": "Comédie correcte, quelques bonnes blagues mais un scénario assez prévisible.",
+        "url": "https://www.senscritique.com/film/film_test_2/critique/2",
+        "hash_critique": make_hash("Comédie correcte, quelques bonnes blagues mais un scénario assez prévisible.", "https://www.senscritique.com/film/film_test_2/critique/2"),
+        "likes": 5,
+        "comments": 1,
+        "rate": 6.9,
+        "date_sortie": "2024-02-20",
+        "image": "https://img.test/film2.jpg",
+        "bande_originale": "Compositeur B",
+        "groupe": None,
+        "annee": 2024,
+        "duree": 95,
+        "genres": ["Comédie"],
+        "producteurs": ["Prod C"],
+        "realisateurs": ["Réalisateur B"],
+        "scenaristes": ["Scénariste B", "Scénariste C"],
+        "pays": ["France", "Belgique"],
     })
 
-    texte3 = "Horreur movie, J ai vraiment eu tres peur."
-    url3 = "https://www.senscritique.com/film/film_test_3/critique/3"
     critiques.append({
         "titre": "Film test 3",
         "film_url": "https://www.senscritique.com/film/film_test_3",
-        "auteur": "UserB",
+        "auteur": "UserC",
         "note": 6.5,
-        "texte": texte3,
-        "url": url3,
+        "texte": "Horreur movie, J ai vraiment eu tres peur.",
+        "url": "https://www.senscritique.com/film/film_test_3/critique/3",
+        "hash_critique": make_hash("Horreur movie, J ai vraiment eu tres peur.", "https://www.senscritique.com/film/film_test_3/critique/3"),
+        "likes": 2,
+        "comments": 0,
+        "rate": 7.1,
+        "date_sortie": "2023-10-31",
+        "image": "https://img.test/film3.jpg",
+        "bande_originale": "Compositeur C",
+        "groupe": None,
+        "annee": 2023,
+        "duree": 102,
+        "genres": ["Horreur", "Thriller"],
+        "producteurs": ["Prod D"],
+        "realisateurs": ["Réalisateur C"],
+        "scenaristes": ["Scénariste D"],
+        "pays": ["États-Unis"],
     })
     return critiques

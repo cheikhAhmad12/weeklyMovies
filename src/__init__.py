@@ -1,1 +1,1 @@
-# src package marker
+# Package marker for src modules
