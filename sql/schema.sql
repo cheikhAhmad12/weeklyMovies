@@ -64,5 +64,5 @@ CREATE TABLE reviews (
     comments FLOAT,
     content TEXT,
     url TEXT UNIQUE,
-    embedding VECTOR(768)
+    embedding VECTOR(384)
 );

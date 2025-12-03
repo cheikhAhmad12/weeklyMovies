@@ -5,4 +5,4 @@ RUN apt-get update && apt-get install -y build-essential curl git && rm -rf /var
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-CMD ["python", "-m", "src.flows.weekly_pipeline"]
+CMD ["python", "-m", "src.flow"]

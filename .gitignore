@@ -1,2 +1,3 @@
+# Ignore local Postgres volume data
+pg_data/
 .env
-pg_data*
