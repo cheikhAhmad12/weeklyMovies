@@ -39,14 +39,22 @@ def _insert_dim_list(conn, table: str, column: str, film_title: str, values: Ite
     """
     Insère en masse des lignes (film, value) dans une table dimension simple.
     """
-    vals = [v for v in values if v]
-    if not vals:
+    # Nettoie et déduplique la liste pour éviter les insertions multiples du même couple film/valeur.
+    vals = [v.strip() for v in values if v and v.strip()]
+    unique_vals = sorted(set(vals))
+    if not unique_vals:
         return
     with conn.cursor() as cur:
-        for v in vals:
+        for v in unique_vals:
             cur.execute(
-                f"INSERT INTO {table} (film, {column}) VALUES (%s, %s)",
-                (film_title, v)
+                f"""
+                INSERT INTO {table} (film, {column})
+                SELECT %s, %s
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM {table} WHERE film = %s AND {column} = %s
+                )
+                """,
+                (film_title, v, film_title, v),
             )
 
 def insert_genres(conn, film_title: str, genres: Iterable[str]):
@@ -87,3 +95,4 @@ def insert_review(conn, film_title: str, row, enriched, emb):
             row["url"],
             emb
         ))
+        return cur.rowcount == 1

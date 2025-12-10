@@ -39,7 +39,7 @@ tgi-ok:
 	curl -fsS http://localhost:8082/health && echo " TGI OK"
 
 flow:
-	docker compose run --rm etl bash -lc "python -m src.flow"
+	docker compose run --rm etl bash -lc "python flow.py"
 
 reset-db:
 	PGPASSWORD=etl psql -h localhost -p 5434 -U etl -d movies <<'SQL'

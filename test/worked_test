@@ -1,9 +1,0 @@
-curl -fsS http://localhost:8082/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
-    "messages": [{"role":"user","content":"Say hi in one word."}],
-    "max_tokens": 16,
-    "temperature": 0.7,
-    "top_p": 0.9
-  }'

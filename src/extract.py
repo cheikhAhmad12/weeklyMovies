@@ -1,9 +1,7 @@
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 import time, hashlib
 from bs4 import BeautifulSoup
-import pandas as pd
 import re
 
 def make_driver(remote_url:str):
@@ -14,28 +12,41 @@ def make_driver(remote_url:str):
     opts.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
     return webdriver.Remote(command_executor=remote_url, options=opts)
 
-def weekly_releases(driver, week_url:str) -> pd.DataFrame:
+def weekly_releases(driver, week_url:str) -> list[dict]:
     driver.get(week_url)
     time.sleep(2.5)  # throttle
     soup = BeautifulSoup(driver.page_source, "html.parser")
     films = []
-    # EXEMPLE DE SÉLECTEURS — à ajuster :
-    for a in soup.select("a.c-product"):
-        titre_el = a.select_one(".c-product__title, .c-entity__title")
-        titre = titre_el.get_text(strip=True) if titre_el else None
+    # Sélecteurs élargis : certaines pages listent les films via d'autres classes.
+    anchors = soup.select(
+        "a.c-product, a[href*='/film/'].elco-anchor, a[href*='/film/'].c-entity, a[href*='/film/']"
+    )
+    for a in anchors:
+        titre_el = a.select_one(".c-product__title, .c-entity__title, .elco-entity-title, h2, .title")
+        titre = titre_el.get_text(strip=True) if titre_el else a.get_text(strip=True)
         url = a.get("href")
         if titre and url and "/film/" in url:
-            films.append({"titre": titre, "url": f"https://www.senscritique.com{url}"})
-    return pd.DataFrame(films).drop_duplicates(subset=["url"])
+            if not url.startswith("http"):
+                url = f"https://www.senscritique.com{url}"
+            films.append({"titre": titre, "url": url})
+    # dedupe while preserving order
+    seen = set()
+    deduped = []
+    for film in films:
+        if film["url"] in seen:
+            continue
+        seen.add(film["url"])
+        deduped.append(film)
+    return deduped
 
-def film_reviews(driver, film_url:str) -> pd.DataFrame:
+def film_reviews(driver, film_url:str, film_title: str | None = None) -> list[dict]:
     driver.get(film_url + "/critiques")
     time.sleep(2.5)
     soup = BeautifulSoup(driver.page_source, "html.parser")
     rows = []
-    # EXEMPLE DE SÉLECTEURS — à ajuster :
-    for item in soup.select(".e-critique, .p-critic, article"):
-        texte_el = item.select_one(".content, .c-review__body, .rviw")
+    # Sélecteurs élargis pour s'adapter aux variantes de pages critiques.
+    for item in soup.select(".e-critique, .p-critic, article, [data-testid='review-card'], .rviw"):
+        texte_el = item.select_one(".content, .c-review__body, .rviw, [data-testid='review-body']")
         texte = texte_el.get_text(" ", strip=True) if texte_el else None
         if not texte: 
             continue
@@ -44,8 +55,38 @@ def film_reviews(driver, film_url:str) -> pd.DataFrame:
         note_el = item.select_one("[data-rating]")
         note = float(note_el["data-rating"]) if note_el and re.match(r"^\d+(\.\d+)?$", note_el["data-rating"]) else None
         hash_c = hashlib.sha1(((auteur or "") + "||" + texte).encode()).hexdigest()
-        rows.append({"auteur": auteur, "note": note, "texte": texte, "url": film_url, "hash_critique": hash_c})
-    return pd.DataFrame(rows)
+        review_link = item.select_one("a[href*='/critique/'], a[href*='/review/']")
+        review_url = review_link.get("href") if review_link else None
+        full_review_url = (
+            review_url
+            if review_url and review_url.startswith("http")
+            else f"https://www.senscritique.com{review_url}" if review_url else film_url
+        )
+        rows.append({
+            "titre": film_title,
+            "film_url": film_url,
+            "auteur": auteur,
+            "note": note,
+            "texte": texte,
+            "url": full_review_url,
+            "hash_critique": hash_c,
+            # champs attendus par le reste du pipeline
+            "likes": None,
+            "comments": None,
+            "rate": None,
+            "date_sortie": None,
+            "image": None,
+            "bande_originale": None,
+            "groupe": None,
+            "annee": None,
+            "duree": None,
+            "genres": [],
+            "producteurs": [],
+            "realisateurs": [],
+            "scenaristes": [],
+            "pays": [],
+        })
+    return rows
 
 
 def fake_scrape_reviews() -> list[dict]:

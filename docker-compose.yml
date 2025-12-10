@@ -67,6 +67,8 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://etl:etl@postgres:5432/movies
       TEI_URL: http://tei:80
+      USE_FAKE_EXTRACT: "false"
+      WEEK_URL: ${WEEK_URL:-https://www.senscritique.com/films/sorties-cette-semaine}
     volumes:
       - .:/app
     restart: unless-stopped

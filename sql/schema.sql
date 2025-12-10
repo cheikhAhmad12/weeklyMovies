@@ -28,31 +28,36 @@ CREATE TABLE films (
 CREATE TABLE genres (
     id SERIAL PRIMARY KEY,
     film VARCHAR(255),
-    genre VARCHAR(255)
+    genre VARCHAR(255),
+    CONSTRAINT genres_unique UNIQUE(film, genre)
 );
 
 CREATE TABLE producteurs (
     id SERIAL PRIMARY KEY,
     film VARCHAR(255),
-    producteur VARCHAR(255)
+    producteur VARCHAR(255),
+    CONSTRAINT producteurs_unique UNIQUE(film, producteur)
 );
 
 CREATE TABLE realisateurs (
     id SERIAL PRIMARY KEY,
     film VARCHAR(255),
-    realisateur VARCHAR(255)
+    realisateur VARCHAR(255),
+    CONSTRAINT realisateurs_unique UNIQUE(film, realisateur)
 );
 
 CREATE TABLE scenaristes (
     id SERIAL PRIMARY KEY,
     film VARCHAR(255),
-    scenariste VARCHAR(255)
+    scenariste VARCHAR(255),
+    CONSTRAINT scenaristes_unique UNIQUE(film, scenariste)
 );
 
 CREATE TABLE pays (
     id SERIAL PRIMARY KEY,
     film VARCHAR(255),
-    pays VARCHAR(255)
+    pays VARCHAR(255),
+    CONSTRAINT pays_unique UNIQUE(film, pays)
 );
 
 CREATE TABLE reviews (
