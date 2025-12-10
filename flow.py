@@ -25,7 +25,7 @@ def run_weekly(week_url: str | None = None, limit_films: int | None = 10, seleni
       3) Enrichit via sentiment + TEI
       4) Upsert films + insert reviews (vector)
     """
-    print("🚀 Démarrage du pipeline weekly...")
+    print(" Démarrage du pipeline weekly...")
 
     # URLs / drivers
     target_week = week_url or os.getenv("WEEK_URL")
