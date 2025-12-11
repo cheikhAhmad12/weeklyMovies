@@ -17,7 +17,7 @@ from src.config import settings
 # 4) Orchestrateur principal
 # -------------------------
 
-def run_weekly(week_url: str | None = None, limit_films: int | None = 10, selenium_remote: str | None = None):
+def run_weekly(limit_films:10):
     """
     Pipeline principal :
       1) Récupère les films de la semaine (scraping)
@@ -28,18 +28,20 @@ def run_weekly(week_url: str | None = None, limit_films: int | None = 10, seleni
     print(" Démarrage du pipeline weekly...")
 
     # URLs / drivers
-    target_week = week_url or os.getenv("WEEK_URL")
+    target_week = os.getenv("WEEK_URL")
+    print(f"Target week URL: {target_week}")
     if not target_week:
-        raise ValueError("week_url manquant (paramètre ou variable d'env WEEK_URL).")
-    remote = selenium_remote or settings.selenium_remote_url or "http://selenium:4444/wd/hub"
+        raise ValueError("week_url manquant")
+    remote = "http://selenium:4444/wd/hub"
+    print(f"Connexion Selenium Remote: {remote}")
     driver = make_driver(remote)
-
-    # 1) Connexion DB
+    print(f" Driver Selenium OK : {driver}")
+    # Connexion DB
     conn = get_conn()
     print("✅ Connexion DB OK")
 
     try:
-        # 2) Récupération des films de la semaine
+        # Récupération des films de la semaine
         films = weekly_releases(driver, target_week)
         if limit_films:
             films = films[:limit_films]
@@ -48,7 +50,7 @@ def run_weekly(week_url: str | None = None, limit_films: int | None = 10, seleni
             print("⚠️ Aucun film détecté, arrêt.")
             return
 
-        # 3) Récupération des critiques
+        #Récupération des critiques
         all_reviews: list[dict] = []
         for film in films:
             title = film.get("titre") or film.get("title")

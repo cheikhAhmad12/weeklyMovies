@@ -1,8 +1,9 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-import time, hashlib
+import time, hashlib, json
 from bs4 import BeautifulSoup
 import re
+import requests
 
 def make_driver(remote_url:str):
     opts = Options()
@@ -42,8 +43,132 @@ def weekly_releases(driver, week_url:str) -> list[dict]:
 def film_reviews(driver, film_url:str, film_title: str | None = None) -> list[dict]:
     driver.get(film_url + "/critiques")
     time.sleep(2.5)
-    soup = BeautifulSoup(driver.page_source, "html.parser")
+    html_source = driver.page_source
+    soup = BeautifulSoup(html_source, "html.parser")
     rows = []
+
+    def parse_next_data_reviews(soup_obj):
+        """
+        SensCritique est en Next.js : les critiques sont dans le JSON __NEXT_DATA__/__APOLLO_STATE__.
+        On extrait directement ces données pour éviter de dépendre des classes CSS dynamiques.
+        """
+        script_tag = soup_obj.find("script", id="__NEXT_DATA__")
+        if not script_tag or not script_tag.string:
+            return []
+        try:
+            data = json.loads(script_tag.string)
+        except json.JSONDecodeError:
+            return []
+
+        apollo = (
+            data.get("props", {})
+                .get("pageProps", {})
+                .get("__APOLLO_STATE__", {})
+        )
+        if not isinstance(apollo, dict):
+            return []
+
+        # On récupère un bloc Product pour métadonnées éventuelles (note moyenne, image, dates).
+        product_node = None
+        for key, val in apollo.items():
+            if isinstance(val, dict) and key.startswith("Product:"):
+                product_node = val
+                break
+
+        # Cherche les références de critiques depuis le bloc Product (clé reviews({...})) ou n'importe quel node Reviews.
+        review_refs = []
+        if product_node:
+            for k, v in product_node.items():
+                if isinstance(v, dict) and v.get("__typename") == "Reviews" and "items" in v:
+                    for item in v.get("items", []):
+                        ref = item.get("__ref") if isinstance(item, dict) else None
+                        if ref and ref.startswith("Review:"):
+                            review_refs.append(ref)
+        # fallback : scan global si non trouvé
+        if not review_refs:
+            for node in apollo.values():
+                if isinstance(node, dict) and node.get("__typename") == "Reviews" and "items" in node:
+                    for item in node.get("items", []):
+                        ref = item.get("__ref") if isinstance(item, dict) else None
+                        if ref and ref.startswith("Review:"):
+                            review_refs.append(ref)
+        if not review_refs:
+            return []
+
+        film_rate = product_node.get("rating") if product_node else None
+        date_sortie = product_node.get("dateRelease") if product_node else None
+        image = None
+        if product_node:
+            for k, v in product_node.items():
+                # Exemple de clé: medias({"backdropSize":"1200"})
+                if isinstance(v, dict) and "picture" in v:
+                    image = v.get("picture")
+                    break
+
+        parsed = []
+        seen_hashes = set()
+        for ref in review_refs:
+            review_obj = apollo.get(ref, {})
+            if not isinstance(review_obj, dict):
+                continue
+            texte = review_obj.get("bodyShort") or review_obj.get("body") or ""
+            if not texte:
+                continue
+            auteur = None
+            author_ref = review_obj.get("author", {}).get("__ref")
+            if author_ref and isinstance(apollo.get(author_ref), dict):
+                user = apollo[author_ref]
+                auteur = user.get("name") or user.get("username")
+            note = review_obj.get("rating")
+            review_url = review_obj.get("url")
+            full_review_url = (
+                review_url if review_url and review_url.startswith("http")
+                else f"https://www.senscritique.com{review_url}" if review_url else film_url
+            )
+            hash_c = hashlib.sha1(((auteur or "") + "||" + texte).encode()).hexdigest()
+            if hash_c in seen_hashes:
+                continue
+            seen_hashes.add(hash_c)
+            parsed.append({
+                "titre": film_title,
+                "film_url": film_url,
+                "auteur": auteur,
+                "note": note,
+                "texte": texte,
+                "url": full_review_url,
+                "hash_critique": hash_c,
+                "likes": review_obj.get("likeCount"),
+                "comments": review_obj.get("commentCount"),
+                "rate": film_rate,
+                "date_sortie": date_sortie,
+                "image": image,
+                "bande_originale": None,
+                "groupe": None,
+                "annee": product_node.get("yearOfProduction") if product_node else None,
+                "duree": product_node.get("duration") if product_node else None,
+                "genres": [],
+                "producteurs": [],
+                "realisateurs": [],
+                "scenaristes": [],
+                "pays": [],
+            })
+        return parsed
+
+    # Essaye d'abord via le JSON Next.js, puis fallback sur le scraping classique.
+    rows = parse_next_data_reviews(soup)
+    if not rows:
+        # Fallback réseau direct (au cas où Cloudflare/lazy load empêche page_source de contenir le JSON)
+        try:
+            resp = requests.get(film_url + "/critiques", headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}, timeout=15)
+            if resp.ok:
+                soup_fallback = BeautifulSoup(resp.text, "html.parser")
+                rows = parse_next_data_reviews(soup_fallback)
+        except Exception:
+            pass
+
+    if rows:
+        return rows
+
     # Sélecteurs élargis pour s'adapter aux variantes de pages critiques.
     for item in soup.select(".e-critique, .p-critic, article, [data-testid='review-card'], .rviw"):
         texte_el = item.select_one(".content, .c-review__body, .rviw, [data-testid='review-body']")
