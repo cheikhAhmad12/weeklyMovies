@@ -13,22 +13,23 @@
 - [Reporting and visualization](#reporting-and-visualization)
 
 ## Overview
-The SensCritique WeeklyMovies Database project is an advanced ETL (Extract, Transform, Load) application developed in Python. It focuses on gathering weekly cinema release data from [sens-critique](https://www.senscritique.com/). For the transformation phase, we will leverage a Large Language Model (LLM) and the [TEI](https://github.com/huggingface/text-embeddings-inference) project to vectorize the reviews. The project's primary aim is to extract movie data, transform it using these advanced tools, and then store it in a [PGVector](https://github.com/pgvector/pgvector) database, a specialized vector data structure. This choice is motivated by the need to process and embed movie reviews, categorizing them into positive or negative sentiments, which is pivotal for subsequent data analysis and visualization.
+SensCritique WeeklyMovies est un ETL Python (Selenium + TEI) qui récupère les sorties ciné de la semaine sur [senscritique.com](https://www.senscritique.com/), collecte les critiques, vectorise les textes via [TEI](https://github.com/huggingface/text-embeddings-inference) et charge le tout dans Postgres + [pgvector](https://github.com/pgvector/pgvector). Un modèle HF optionnel (si `HF_TOKEN` est fourni) classe les sentiments.
 
 <p align="left">
   <img src="res/Pipeline.png" width="600">
 </p>
 
 ## Key Features
-- **Automated ETL Pipeline**: Extracts data from [sens-critique](https://www.senscritique.com/), transforms it, and loads it into a PGVector database.
-- **Review Analysis**: Captures and categorizes movie reviews, enabling detailed sentiment analysis.
-- **Vector Database Utilization**: Leverages [PGVector]((https://github.com/pgvector/pgvector)) for efficient handling and querying of vector data.
-- **Dashboard Compatibility**: Designed to support data visualization and dashboard creation in PowerBI.
-- **Scheduled and On-Demand Execution**: The process can be executed at any time, with checks to prevent reprocessing of current week's data.
+- Scraping hebdo des films et critiques SensCritique (Selenium Remote).
+- Embeddings via TEI et stockage vectoriel (pgvector).
+- Sentiment via modèle HF (si token dispo), sinon `None` explicite.
+- Idempotence : `insert_review` ignore les URLs déjà présentes.
+- Scripts Makefile pour lancer, migrer, réinitialiser.
 
 ## Important Note
-:rotating_light::rotating_light::rotating_light:
-- **Code Maintenance**: The code might not always be up-to-date due to possible changes in [sens-critique](https://www.senscritique.com/)'s website structure. While re-adaptation of the code is straightforward, regular updates may not be feasible.
+- Le HTML SensCritique change souvent : la collecte peut nécessiter d’ajuster les sélecteurs.
+- Le service HF est optionnel : sans `HF_TOKEN`, le sentiment reste `None`.
+- Le dossier `pg_data` sur l’hôte conserve les données même après `docker compose down`; supprime-le pour repartir de zéro.
 
 ## Technology Stack
 <img src="res/hf.png" width="50"> <img src="res/pg.png" width="50"><img src="res/dock.jpg" width="50"><img src="res/sel.png" width="50"><img src="res/pbi.png" height="50">
@@ -41,25 +42,25 @@ The SensCritique WeeklyMovies Database project is an advanced ETL (Extract, Tran
 - **PwerBI**: For reporting.
 
 ## Repository Structure
-| Directory/File        | Description                                  |
-|-----------------------|----------------------------------------------|
-| `etl/`                | Package containing Extract, Transform, Load modules. |
-| `docker-compose.yml`  | Docker Compose file to link VDB, the app, and TEI.   |
-| `Dockerfile`          | Dockerfile for creating the application's image.     |
-| `main.py`             | Script to execute the ETL process.                   |
-| `setup_vcb.py`        | Script for initial database setup (if running without volumes). |
-| `bddr-sc-env.yml`        | Script for setup the conda env. |
-| `requirements.txt`        | To install the dependencies with pip. |
-|`reporting/`| Folder containing all the reporting section. |
+| Path            | Description |
+|-----------------|-------------|
+| `flow.py`       | Orchestrateur principal de l’ETL. |
+| `src/extract.py`| Scraping films + critiques (Selenium). |
+| `src/transform.py` | Embeddings TEI + sentiment HF. |
+| `src/load.py`   | Connexion DB, upserts, inserts. |
+| `sql/schema.sql`| Schéma Postgres/pgvector. |
+| `docker-compose.yml` | Services Postgres/pgvector, TEI, Selenium, PgAdmin, ETL. |
+| `Makefile`      | Raccourcis : `up`, `down`, `flow`, `migrate`, `reset`, `reset-db`. |
+| `reporting/`    | Ressources de reporting. |
 
 ## Usage
-- **Docker Setup**: Fetch the `docker-compose.yml`, required volumes, and project image. Run `main.py` within the container. If running 
-without volumes, execute `setup_vcb.py` first.
-- **Conda Environment**: Setup a Conda environment and execute `main.py`, or use the classes within a Notebook. **In this case, setup the rights ENV VAR**  
-**Note**: Don't forget to launch pgvector and TEI images.  
+1. Lancer l’infra : `docker compose up -d`
+2. Appliquer le schéma : `make migrate`
+3. Nettoyer la base si besoin : `make reset` (drop/recreate schema) ou `make reset-db` (TRUNCATE). Pour repartir à blanc, supprimer `pg_data`.
+4. Exécuter le pipeline : `make flow` (utilise `WEEK_URL` depuis `.env` pour la semaine à scraper).
 
-**HANDBOOK available [here](https://github.com/ilanaliouchouche/senscritique-weeklyreal-database/tree/main/handbook/README.md)**
+PgAdmin : http://localhost:8081 (admin@admin.com / admin), connexion Postgres : host `postgres`, port `5432`, user/pass `etl`, db `movies`.
 
-- **Reporting**: For reporting purposes, retrieve only the volume, launch a PGVector instance, and connect to the database from PowerBI. See [`reporting/`](/reporting/).
+Sans `HF_TOKEN`, le sentiment restera `None` (pas de fallback heuristique).
 
 # 🎬
