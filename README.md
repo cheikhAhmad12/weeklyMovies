@@ -54,13 +54,13 @@ SensCritique WeeklyMovies est un ETL Python (Selenium + TEI) qui récupère les 
 | `reporting/`    | Ressources de reporting. |
 
 ## Usage
-1. Lancer l’infra : `docker compose up -d`
-2. Appliquer le schéma : `make migrate`
-3. Nettoyer la base si besoin : `make reset` (drop/recreate schema) ou `make reset-db` (TRUNCATE). Pour repartir à blanc, supprimer `pg_data`.
-4. Exécuter le pipeline : `make flow` (utilise `WEEK_URL` depuis `.env` pour la semaine à scraper).
+1. Start infra: `docker compose up -d`
+2. Apply schema: `make migrate`
+3. Reset data (optional): `make reset` (drop/recreate schema) or `make reset-db` (TRUNCATE). To start fresh, delete `pg_data`.
+4. Run pipeline: `make flow` (reads `WEEK_URL` from `.env` for the target week).
 
-PgAdmin : http://localhost:8081 (admin@admin.com / admin), connexion Postgres : host `postgres`, port `5432`, user/pass `etl`, db `movies`.
+PgAdmin: http://localhost:8081 (admin@admin.com / admin). DB connection: host `postgres`, port `5432`, user/pass `etl`, db `movies`.
 
-Sans `HF_TOKEN`, le sentiment restera `None` (pas de fallback heuristique).
+Without `HF_TOKEN`, sentiment stays `None` (no heuristic fallback).
 
 # 🎬
