@@ -72,8 +72,8 @@ def insert_scenaristes(conn, film_title: str, scenaristes: Iterable[str]):
 def insert_pays(conn, film_title: str, pays: Iterable[str]):
     _insert_dim_list(conn, "pays", "pays", film_title, pays)
 
-def insert_review(conn, film_title: str, row, enriched, emb):
-    sentiment = (enriched.get("sentiment") or "").lower()
+def insert_review(conn, film_title: str, row, sentiment: str | None, emb):
+    sentiment = (sentiment or "").lower()
     is_negative = None
     if "neg" in sentiment:
         is_negative = True

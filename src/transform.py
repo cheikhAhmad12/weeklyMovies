@@ -2,6 +2,11 @@ import os
 import re
 import requests
 
+try:
+    from huggingface_hub import InferenceClient  # optional
+except ImportError:
+    InferenceClient = None
+
 
 def embed_texts(texts: list[str], tei_url: str | None = None) -> list[list[float]]:
     """
@@ -16,64 +21,48 @@ def embed_texts(texts: list[str], tei_url: str | None = None) -> list[list[float
 
 
 def classify_sentiment_hf(text: str, model_id: str | None = None, hf_token: str | None = None) -> str | None:
-    """
-    Utilise l'API Hugging Face Inference pour classifier le sentiment si un token est dispo.
-    Fallback sur une heuristique locale pour rester offline-friendly.
-    """
-    model = model_id or os.getenv("SENTIMENT_MODEL") or os.getenv("GEN_MODEL") or "cardiffnlp/twitter-xlm-roberta-base-sentiment"
+    model = model_id or os.getenv("SENTIMENT_MODEL") or os.getenv("GEN_MODEL")
     token = hf_token or os.getenv("HF_TOKEN")
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
-    if token:
+
+    if InferenceClient and token and model:
         try:
-            resp = requests.post(
-                f"https://api-inference.huggingface.co/models/{model}",
-                headers=headers,
-                json={"inputs": text},
-                timeout=30,
+            gen_client = InferenceClient(model=model, token=token, timeout=120)
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "Classifie le sentiment du texte en 'positif', 'negatif' ou 'neutre'. "
+                        "Réponds uniquement par l'un de ces trois mots."
+                    ),
+                },
+                {"role": "user", "content": text},
+            ]
+            resp = gen_client.chat_completion(
+                messages=messages,
+                max_tokens=16,
+                temperature=0.2,
+                top_p=0.9,
             )
-            resp.raise_for_status()
-            data = resp.json()
-            # Réponse typique: [[{"label": "NEGATIVE", "score": ...}, ...]]
-            if isinstance(data, list):
-                first = data[0][0] if data and isinstance(data[0], list) else data[0]
-                label = first.get("label", "") if isinstance(first, dict) else ""
-            elif isinstance(data, dict):
-                label = data.get("label", "")
-            else:
-                label = ""
-            lbl = label.lower()
-            if re.search(r"neg", lbl):
+            m = resp.choices[0].message
+            label = (m["content"] if isinstance(m, dict) else m.content).strip().lower()
+            if "neg" in label:
                 return "negatif"
-            if re.search(r"pos", lbl):
+            if "pos" in label:
                 return "positif"
-            if re.search(r"neu", lbl):
+            if "neut" in label:
                 return "neutre"
         except Exception:
-            # on tombe sur le fallback heuristique
-            pass
+            return None
 
-    # Fallback léger sans appel réseau
-    txt = text.lower()
-    positives = {"excellent", "bien", "super", "magnifique", "touchant", "drôle", "genial", "très bien", "tres bien"}
-    negatives = {"mauvais", "nul", "décevant", "decevant", "lent", "ennuyeux", "horrible", "pire"}
-    pos_hits = sum(1 for w in positives if w in txt)
-    neg_hits = sum(1 for w in negatives if w in txt)
-    if pos_hits > neg_hits and pos_hits > 0:
-        return "positif"
-    if neg_hits > pos_hits and neg_hits > 0:
-        return "negatif"
-    return "neutre" if text else None
+    # Si pas de client/token/modèle ou échec de l'appel HF, on retourne None pour signaler l'absence de résultat LLM.
+    return None
 
 
 def sentiment_critique(texte: str, tei_url: str | None = None):
-    """
-    Enrichit une critique avec un embedding TEI et un label de sentiment via l'API HF.
-    """
-    tei = tei_url or os.getenv("TEI_URL") or "http://tei:80"
     try:
-        emb = embed_texts([texte], tei)[0]
+        emb = embed_texts([texte], tei_url)[0]
     except Exception:
         emb = None
     sentiment = classify_sentiment_hf(texte)
-    enriched = {"resume": None, "sentiment": sentiment, "themes": []}
-    return enriched, emb
+    print (f"Sentiment critique: {sentiment}")
+    return sentiment, emb

@@ -20,8 +20,8 @@ from src.config import settings
 def run_weekly(limit_films:10):
     """
     Pipeline principal :
-      1) Récupère les films de la semaine (scraping)
-      2) Récupère les critiques de chaque film
+      Récupère les films de la semaine (scraping)
+      Récupère les critiques de chaque film
       3) Enrichit via sentiment + TEI
       4) Upsert films + insert reviews (vector)
     """
@@ -90,19 +90,19 @@ def run_weekly(limit_films:10):
                 insert_realisateurs(conn, film["film"], row.get("realisateurs", []))
                 insert_scenaristes(conn, film["film"], row.get("scenaristes", []))
                 insert_pays(conn, film["film"], row.get("pays", []))
-                enriched, emb = sentiment_critique(row["texte"])
+                sentiment, emb = sentiment_critique(row["texte"])
                 print("   😊 Sentiment calculé")
 
-                # Insertion review
-                ok = insert_review(conn, film["film"], row, enriched, emb)
+        
+                ok = insert_review(conn, film["film"], row, sentiment, emb)
                 if not ok:
-                    print("   ⚠️ Critique déjà en base (url).")
+                    print("⚠️ Critique déjà en base (url).")
                     skipped += 1
                 else:
                     print("   ✅ Critique insérée.")
                     inserted += 1
             except Exception as e:
-                print(f"   ❌ ERREUR sur {row.get('url')}: {e}")
+                print(f"❌ ERREUR sur {row.get('url')}: {e}")
 
         print(f"\n📊 Résumé: {inserted} insertions, {skipped} ignorées.")
         print("✅ Pipeline terminé.")
