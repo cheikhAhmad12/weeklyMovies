@@ -13,23 +13,23 @@
 - [Reporting and visualization](#reporting-and-visualization)
 
 ## Overview
-SensCritique WeeklyMovies est un ETL Python (Selenium + TEI) qui récupère les sorties ciné de la semaine sur [senscritique.com](https://www.senscritique.com/), collecte les critiques, vectorise les textes via [TEI](https://github.com/huggingface/text-embeddings-inference) et charge le tout dans Postgres + [pgvector](https://github.com/pgvector/pgvector). Un modèle HF optionnel (si `HF_TOKEN` est fourni) classe les sentiments.
+SensCritique WeeklyMovies is a Python ETL (Selenium + TEI) that retrieves weekly movie releases from [senscritique.com](https://www.senscritique.com/), collects reviews, vectorizes texts via [TEI](https://github.com/huggingface/text-embeddings-inference), and loads everything into Postgres + [pgvector](https://github.com/pgvector/pgvector). An optional HF model (if `HF_TOKEN` is provided) classifies sentiments.
 
 <p align="left">
   <img src="res/Pipeline.png" width="600">
 </p>
 
 ## Key Features
-- Scraping hebdo des films et critiques SensCritique (Selenium Remote).
-- Embeddings via TEI et stockage vectoriel (pgvector).
-- Sentiment via modèle HF (si token dispo), sinon `None` explicite.
-- Idempotence : `insert_review` ignore les URLs déjà présentes.
-- Scripts Makefile pour lancer, migrer, réinitialiser.
+- Weekly scraping of SensCritique movies and reviews (Selenium Remote).
+- Embeddings via TEI and vector storage (pgvector).
+- Sentiment via HF model (if token available), otherwise explicit `None`.
+- Idempotence: `insert_review` ignores URLs already present.
+- Makefile scripts to run, migrate, and reset.
 
 ## Important Note
-- Le HTML SensCritique change souvent : la collecte peut nécessiter d’ajuster les sélecteurs.
-- Le service HF est optionnel : sans `HF_TOKEN`, le sentiment reste `None`.
-- Le dossier `pg_data` sur l’hôte conserve les données même après `docker compose down`; supprime-le pour repartir de zéro.
+- SensCritique HTML changes often: scraping may require updating selectors.
+- The HF service is optional: without `HF_TOKEN`, sentiment remains `None`.
+- The `pg_data` folder on the host keeps data even after `docker compose down`; delete it to start from scratch.
 
 ## Technology Stack
 <img src="res/hf.png" width="50"> <img src="res/pg.png" width="50"><img src="res/dock.jpg" width="50"><img src="res/sel.png" width="50"><img src="res/pbi.png" height="50">
@@ -44,14 +44,14 @@ SensCritique WeeklyMovies est un ETL Python (Selenium + TEI) qui récupère les 
 ## Repository Structure
 | Path            | Description |
 |-----------------|-------------|
-| `flow.py`       | Orchestrateur principal de l’ETL. |
-| `src/extract.py`| Scraping films + critiques (Selenium). |
-| `src/transform.py` | Embeddings TEI + sentiment HF. |
-| `src/load.py`   | Connexion DB, upserts, inserts. |
-| `sql/schema.sql`| Schéma Postgres/pgvector. |
-| `docker-compose.yml` | Services Postgres/pgvector, TEI, Selenium, PgAdmin, ETL. |
-| `Makefile`      | Raccourcis : `up`, `down`, `flow`, `migrate`, `reset`, `reset-db`. |
-| `reporting/`    | Ressources de reporting. |
+| `flow.py`       | Main ETL orchestrator. |
+| `src/extract.py`| Movie + review scraping (Selenium). |
+| `src/transform.py` | TEI embeddings + HF sentiment. |
+| `src/load.py`   | DB connection, upserts, inserts. |
+| `sql/schema.sql`| Postgres/pgvector schema. |
+| `docker-compose.yml` | Postgres/pgvector, TEI, Selenium, PgAdmin, ETL services. |
+| `Makefile`      | Shortcuts: `up`, `down`, `flow`, `migrate`, `reset`, `reset-db`. |
+| `reporting/`    | Reporting resources. |
 
 ## Usage
 1. Start infra: `docker compose up -d`
