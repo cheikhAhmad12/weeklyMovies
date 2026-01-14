@@ -39,7 +39,7 @@ SensCritique WeeklyMovies is a Python ETL (Selenium + TEI) that retrieves weekly
 - **PGVector**: A vector database for efficient data storage and retrieval.
 - **Docker**: For containerizing the ETL process.
 - **Selenium**: For web scraping and data extraction.
-- **PwerBI**: For reporting.
+- **PowerBI**: For reporting.
 
 ## Repository Structure
 | Path            | Description |
